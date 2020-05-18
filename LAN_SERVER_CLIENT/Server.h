@@ -11,14 +11,14 @@ private:
 	void Run();
 public:
 	std::string input ="";
-	
 private:
 	WSAData wsaData;
 	const char* IPaddress = NULL;    // or in format "255.255.255.255"
 	const char* Port = "36484";
 	SOCKET mainSocket;
 	bool stoplistening = false;
-	std::vector<ClientInfo*> clients;
+	std::vector<ClientInfo*> clients;	//probably make it a linked list
+	std::mutex clientsMutex;
 	std::vector<std::thread> clientThreads;
 	std::queue<std::string> messageQueue;
 	std::mutex msgQueMutex;

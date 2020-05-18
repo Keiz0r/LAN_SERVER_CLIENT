@@ -26,10 +26,10 @@ public:
 	static bool sendMessage(const char* msg, const SOCKET& socket, const int& flags);	//returns #bytes sent
 	static int receiveMessage(char* msg, const int& maxmsglen, const SOCKET& socket, const int& flags);	//returns 0 if remote connection closed
 	static void* get_in_addr(sockaddr* sa);	/// get sockaddr, IPv4 or IPv6
-	static void connectionsListenerDispatcher(std::vector<ClientInfo*>* clients, SOCKET* socketin, std::vector<std::thread>* threads, std::queue<std::string>* messageQue, bool* stop, std::mutex* msgQueMutex);
+	static void connectionsListenerDispatcher(std::vector<ClientInfo*>* clients, SOCKET* socketin, std::vector<std::thread>* threads, std::queue<std::string>* messageQue, bool* stop, std::mutex* clientsMutex, std::mutex* msgQueMutex);
 	static void serverListener(ClientInfo* client, std::queue<std::string>* messageQue, std::mutex* msgQueMutex);
 	static void clientListener(SOCKET* socket);
-	static void serverRetranslator(std::vector<ClientInfo*>* clients, std::queue<std::string>* messageQue, bool* stop, std::mutex* msgQueMutex);
+	static void serverRetranslator(std::vector<ClientInfo*>* clients, std::queue<std::string>* messageQue, bool* stop, std::mutex* clientsMutex, std::mutex* msgQueMutex);
 };
 
 //		//tests for manual insertion

@@ -231,7 +231,7 @@ void* SocketCore::get_in_addr(sockaddr* sa) {
     return &(reinterpret_cast<sockaddr_in6*>(sa)->sin6_addr);
 }
 
-void SocketCore::connectionsListenerDispatcher(std::vector<ClientInfo*>* clients, SOCKET* socketin, std::vector<std::thread>* threads, std::queue<std::string>* messageQue, bool* stop, std::mutex* msgQueMutex) {
+void SocketCore::connectionsListenerDispatcher(std::vector<ClientInfo*>* clients, SOCKET* socketin, std::vector<std::thread>* threads, std::queue<std::string>* messageQue, bool* stop, std::mutex* clientsMutex, std::mutex* msgQueMutex) {
     while (!(*stop)) {
         sockaddr remote_addr;
         int remoteaddr_size = sizeof(remote_addr);
@@ -255,7 +255,10 @@ void SocketCore::connectionsListenerDispatcher(std::vector<ClientInfo*>* clients
         client->IPaddress = remoteIP;
         client->name = remotename;
         client->port = remoteport;
+
+        clientsMutex->lock();
         clients->push_back(client);
+        clientsMutex->unlock();
         threads->push_back(std::thread(serverListener, client, messageQue, msgQueMutex));
     }
 }
@@ -305,16 +308,27 @@ void SocketCore::clientListener(SOCKET* socket) {
     }
 }
 
-void SocketCore::serverRetranslator(std::vector<ClientInfo*>* clients, std::queue<std::string>* messageQue, bool* stop, std::mutex* msgQueMutex) {
+void SocketCore::serverRetranslator(std::vector<ClientInfo*>* clients, std::queue<std::string>* messageQue, bool* stop, std::mutex* clientsMutex, std::mutex* msgQueMutex) {
     while (!(*stop)) {
         if (!messageQue->empty()) {
             std::string sender = messageQue->front().substr(0, 256);
             //  clear null terminators
             sender.erase(std::find(sender.begin(), sender.end(), '\0'), sender.end());
             std::string msg = messageQue->front().substr(256);
-            
-            for (std::vector<ClientInfo*>::iterator i = clients->begin(); i != clients->end(); i++) {
-                sendMessage((sender + " : " + msg).c_str(), (*i)->socket, 0);
+
+            std::vector<ClientInfo*>::iterator endloop = clients->end();
+            for (std::vector<ClientInfo*>::iterator i = clients->begin(); i != endloop;) {
+                if ((*i)->connected) {
+                    sendMessage((sender + " : " + msg).c_str(), (*i)->socket, 0);
+                    i++;
+                }
+                else {
+                    clientsMutex->lock();
+                    delete (*i);
+                    i = clients->erase(i);
+                    clientsMutex->unlock();
+                    endloop = clients->end();
+                }
             }
             msgQueMutex->lock();
             messageQue->pop();
