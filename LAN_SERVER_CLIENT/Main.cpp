@@ -15,6 +15,5 @@ int main() {
     else if (input == "server") {
         Server server;
     }
-
     return 0;
 }

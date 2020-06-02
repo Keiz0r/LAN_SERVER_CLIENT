@@ -231,7 +231,7 @@ void* SocketCore::get_in_addr(sockaddr* sa) {
     return &(reinterpret_cast<sockaddr_in6*>(sa)->sin6_addr);
 }
 
-void SocketCore::connectionsListenerDispatcher(std::vector<ClientInfo*>* clients, SOCKET* socketin, std::vector<std::thread>* threads, std::queue<std::string>* messageQue, bool* stop, std::mutex* clientsMutex, std::mutex* msgQueMutex) {
+void SocketCore::connectionsListenerDispatcher(std::vector<std::shared_ptr<ClientInfo>>* clients, SOCKET* socketin, std::queue<std::string>* messageQue, bool* stop, std::mutex* clientsMutex, std::mutex* msgQueMutex) {
     while (!(*stop)) {
         sockaddr remote_addr;
         int remoteaddr_size = sizeof(remote_addr);
@@ -247,7 +247,7 @@ void SocketCore::connectionsListenerDispatcher(std::vector<ClientInfo*>* clients
         char remoteIP[INET6_ADDRSTRLEN];
         char remotename[MAX_NAME_LENGTH];
         char remoteport[20];
-        ClientInfo* client = new ClientInfo;
+        std::shared_ptr<ClientInfo> client = std::make_shared<ClientInfo>();
         getnameinfo(&remote_addr, remoteaddr_size, remotename, MAX_NAME_LENGTH, remoteport, 20, 0);
         InetNtopA(remote_addr.sa_family, SocketCore::get_in_addr(&remote_addr), remoteIP, INET6_ADDRSTRLEN);
         std::cout << "got a conenction from : " << remotename << " IP : " << remoteIP << std::endl;
@@ -259,11 +259,12 @@ void SocketCore::connectionsListenerDispatcher(std::vector<ClientInfo*>* clients
         clientsMutex->lock();
         clients->push_back(client);
         clientsMutex->unlock();
-        threads->push_back(std::thread(serverListener, client, messageQue, msgQueMutex));
+        std::thread newListener(serverListener, client, messageQue, msgQueMutex);
+        newListener.detach();
     }
 }
 
-void SocketCore::serverListener(ClientInfo* client, std::queue<std::string>* messageQue, std::mutex* msgQueMutex) {
+void SocketCore::serverListener(std::shared_ptr<ClientInfo> client, std::queue<std::string>* messageQue, std::mutex* msgQueMutex) {
     client->threadID = std::this_thread::get_id();
     client->connected = true;
     int numbytes = 0;
@@ -286,7 +287,8 @@ void SocketCore::serverListener(ClientInfo* client, std::queue<std::string>* mes
         if (numbytes == SOCKET_ERROR) {
             std::cout << "Client " << client->name << ", " << client->IPaddress << " disconnected" << std::endl;
             client->connected = false;
-            return;
+            closeConnection(client->socket);
+            break;
         }
     }
 }
@@ -308,7 +310,7 @@ void SocketCore::clientListener(SOCKET* socket) {
     }
 }
 
-void SocketCore::serverRetranslator(std::vector<ClientInfo*>* clients, std::queue<std::string>* messageQue, bool* stop, std::mutex* clientsMutex, std::mutex* msgQueMutex) {
+void SocketCore::serverRetranslator(std::vector<std::shared_ptr<ClientInfo>>* clients, std::queue<std::string>* messageQue, bool* stop, std::mutex* clientsMutex, std::mutex* msgQueMutex) {
     while (!(*stop)) {
         if (!messageQue->empty()) {
             std::string sender = messageQue->front().substr(0, 256);
@@ -316,15 +318,15 @@ void SocketCore::serverRetranslator(std::vector<ClientInfo*>* clients, std::queu
             sender.erase(std::find(sender.begin(), sender.end(), '\0'), sender.end());
             std::string msg = messageQue->front().substr(256);
 
-            std::vector<ClientInfo*>::iterator endloop = clients->end();
-            for (std::vector<ClientInfo*>::iterator i = clients->begin(); i != endloop;) {
+            std::vector<std::shared_ptr<ClientInfo>>::iterator endloop = clients->end();
+            for (std::vector<std::shared_ptr<ClientInfo>>::iterator i = clients->begin(); i != endloop;) {
                 if ((*i)->connected) {
                     sendMessage((sender + " : " + msg).c_str(), (*i)->socket, 0);
                     i++;
                 }
-                else {
+                else {  
+                    // cleanup of dead ClientInfo
                     clientsMutex->lock();
-                    delete (*i);
                     i = clients->erase(i);
                     endloop = clients->end();
                     clientsMutex->unlock();

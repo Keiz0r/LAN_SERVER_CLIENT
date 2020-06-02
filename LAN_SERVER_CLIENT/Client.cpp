@@ -16,7 +16,7 @@ Client::~Client() {
 
 void Client::Run() {
     ADDRINFOA clientHints = SocketCore::makeHints(AF_INET, SOCK_STREAM, 0, AI_CANONNAME);
-    ADDRINFOA* clientTypeAddrinfo = SocketCore::makeAddrInfo("proplay.ru", "http", clientHints);
+    ADDRINFOA* clientTypeAddrinfo = SocketCore::makeAddrInfo("localhost", "36484", clientHints);
     SocketCore::displayAddrinfo(clientTypeAddrinfo);
 
     mainSocket = SocketCore::getSocketAndConnect(clientTypeAddrinfo);

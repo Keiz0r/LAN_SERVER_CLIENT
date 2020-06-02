@@ -24,7 +24,7 @@ void Server::Run() {
     SocketCore::listenPort(mainSocket, 10);
 
     // thread fills the ClientInfo form and dispatches conenctions to separate threads
-    std::thread listenerThr(SocketCore::connectionsListenerDispatcher, &clients, &mainSocket, &clientThreads, &messageQueue, &stoplistening, &clientsMutex, &msgQueMutex);
+    std::thread listenerThr(SocketCore::connectionsListenerDispatcher, &clients, &mainSocket, &messageQueue, &stoplistening, &clientsMutex, &msgQueMutex);
     //  if FIFO is empty, retranslator polling at 1/50ms rate
     std::thread retranslator(SocketCore::serverRetranslator, &clients, &messageQueue, &stoplistening, &clientsMutex, &msgQueMutex);
 
@@ -35,29 +35,27 @@ void Server::Run() {
         if (input == "STOPSERVER") {
             stoplistening = true;
             SocketCore::closeConnection(mainSocket);
-            //make a server shutdown procedure, wit several announcements like wow ingame
+            {
+                //make a server shutdown procedure, wit several announcements like wow ingame
+                messageQueue.push("You were disconnected from the server. Server shutdown");
+                //then add mutex for that. also make socketcore an entity, and pass all shit by reference, so threads need not arguments
+                // kill all clients on exit
+                std::vector<std::shared_ptr<ClientInfo>>::iterator loopend = clients.end();
+                clientsMutex.lock();
+                for (std::vector<std::shared_ptr<ClientInfo>>::iterator i = clients.begin(); i != loopend; i++) {
+                    (*i)->connected = false;
+                }
+                clientsMutex.unlock();
+            }
             break;
         }
-        for (std::vector<ClientInfo*>::iterator i = clients.begin(); i != clients.end(); i++) {
+        for (std::vector<std::shared_ptr<ClientInfo>>::iterator i = clients.begin(); i != clients.end(); i++) {
             SocketCore::sendMessage(("SERVER MESSAGE : " + input).c_str(), (*i)->socket, 0);
         }
     }
 
-    //then add mutex for that. also make socketcore an entity, and pass all shit by reference, so threads need not arguments
-    // kill all clients on exit
-    std::vector<ClientInfo*>::iterator loopend = clients.end();
-    clientsMutex.lock();
-    for (std::vector<ClientInfo*>::iterator i = clients.begin(); i != loopend; i++) {
-        SocketCore::sendMessage("You were disconnected from the server. Server shutdown", (*i)->socket, 0);
-        SocketCore::closeConnection((*i)->socket);
-    }
-    clientsMutex.unlock();
+    
 
-    messageQueue.push("APOCALYPSE");
-    // check if all threads are killed on exit
-    for (std::vector<std::thread>::iterator i = clientThreads.begin(); i != clientThreads.end(); i++) {
-        i->join();
-    }
     listenerThr.join();
     retranslator.join();
 }

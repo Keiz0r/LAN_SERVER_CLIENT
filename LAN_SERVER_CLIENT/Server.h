@@ -17,9 +17,8 @@ private:
 	const char* Port = "36484";
 	SOCKET mainSocket;
 	bool stoplistening = false;
-	std::vector<ClientInfo*> clients;	//probably make it a linked list
+	std::vector<std::shared_ptr<ClientInfo>> clients;	//probably make it a linked list
 	std::mutex clientsMutex;
-	std::vector<std::thread> clientThreads;
 	std::queue<std::string> messageQueue;
 	std::mutex msgQueMutex;
 };
