@@ -326,8 +326,8 @@ void SocketCore::serverRetranslator(std::vector<ClientInfo*>* clients, std::queu
                     clientsMutex->lock();
                     delete (*i);
                     i = clients->erase(i);
-                    clientsMutex->unlock();
                     endloop = clients->end();
+                    clientsMutex->unlock();
                 }
             }
             msgQueMutex->lock();

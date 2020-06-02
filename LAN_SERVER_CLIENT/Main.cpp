@@ -1,9 +1,11 @@
+﻿#define UNICODE
 #include <iostream>
 #include <string>
 #include "Server.h"
 #include "Client.h"
 
 int main() {
+
     std::string input;
     std::cout << "client/server?\n>> ";
     std::getline(std::cin, input);
