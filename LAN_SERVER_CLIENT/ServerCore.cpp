@@ -17,6 +17,11 @@ ServerCore::ServerCore(const char* IP, const char* port, std::vector<std::shared
     FreeAddrInfoA(serverAddrinfo);
 
     listenPort(mainSocket, 10);
+
+    // thread fills the ClientInfo form and dispatches conenctions to separate threads
+    listenerThr = std::thread([this]() {this->connectionsListenerDispatcher(); });
+    //  if FIFO is empty, retranslator polling at 1/50ms rate
+    retranslatorThr = std::thread([this]() {this->serverRetranslator(); });
 }
 
 ServerCore::~ServerCore() {
@@ -320,16 +325,6 @@ void ServerCore::serverRetranslator() {
             std::this_thread::sleep_for(std::chrono::milliseconds(50));
         }
     }
-}
-
-void ServerCore::startDispatcher() {
-    // thread fills the ClientInfo form and dispatches conenctions to separate threads
-    listenerThr = std::thread([this]() {this->connectionsListenerDispatcher();});
-}
-
-void ServerCore::startRetranslator() {
-    //  if FIFO is empty, retranslator polling at 1/50ms rate
-    retranslatorThr = std::thread([this]() {this->serverRetranslator();});
 }
 
 void ServerCore::stopServer() {

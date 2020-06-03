@@ -9,8 +9,6 @@ Server::~Server() {
 
 void Server::Run() {
     ServerCore srv(IPaddress.c_str(), Port.c_str(), clients, messageQueue);
-    srv.startDispatcher();
-    srv.startRetranslator();
 
     // server input loop
     while (1) {

@@ -16,6 +16,8 @@ ClientCore::ClientCore(const char* IP, const char* port)
     if (mainSocket != INVALID_SOCKET) {
     //    InetNtopA(clientTypeAddrinfo->ai_family, get_in_addr(reinterpret_cast<sockaddr*>(clientTypeAddrinfo->ai_addr)), array[IP], INET6_ADDRSTRLEN);
         std::cout << "Connected to :" << IP << "!" << std::endl;
+        // thread fills the ClientInfo form and dispatches conenctions to separate threads
+        listenerThr = std::thread([this]() {this->listener(); });
     }
     else {
         std::cout << "connection failed!" << std::endl;
@@ -226,11 +228,6 @@ void ClientCore::listener() {
             return;
         }
     }
-}
-
-void ClientCore::startListener() {
-    // thread fills the ClientInfo form and dispatches conenctions to separate threads
-    listenerThr = std::thread([this](){this->listener();});
 }
 
 void ClientCore::disconnect() {

@@ -21,8 +21,6 @@ public:
 	~ServerCore();
 	bool sendMessage(const char* msg, const SOCKET& socket, const int& flags);	//returns #bytes sent
 	int receiveMessage(char* msg, const int& maxmsglen, const SOCKET& socket, const int& flags);	//returns 0 if remote connection closed
-	void startDispatcher();
-	void startRetranslator();
 	void stopServer();
 private:
 	ADDRINFOA* makeAddrInfo(PCSTR nodename, PCSTR servicename, const ADDRINFOA& hints);

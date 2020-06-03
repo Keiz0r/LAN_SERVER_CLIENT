@@ -21,7 +21,6 @@ public:
 	~ClientCore();
 	bool sendMessage(const char* msg, const int& flags);	//returns #bytes sent
 	int receiveMessage(char* msg, const int& maxmsglen, const SOCKET& socket, const int& flags);	//returns 0 if remote connection closed
-	void startListener();
 	void disconnect();
 private:
 	ADDRINFOA makeHints(const int& family, const int& socktype, const int& protocol, const int& flags);

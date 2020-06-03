@@ -9,7 +9,6 @@ Client::~Client() {
 
 void Client::Run() {
     ClientCore clnt(serverIP.c_str(), serverPort.c_str());
-    clnt.startListener();
 
     //client input loop
     while (true) {
