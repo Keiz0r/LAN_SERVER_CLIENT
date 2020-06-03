@@ -1,5 +1,6 @@
 #pragma once
 #include "Ws2tcpip.h"     //extension on winsock
+#include "WSAErrorList.h"
 #include <iostream>
 #include <vector>
 #include <thread>

@@ -148,12 +148,12 @@ SOCKET ServerCore::getSocketAndBind(ADDRINFOA* addrinfoStruct) {
         }
 
         if ((s = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
-            std::cerr << "Socket error :" << WSAGetLastError() << std::endl;
+            printWSAError();
             continue;
         }
 
         if (bind(s, p->ai_addr, p->ai_addrlen) != 0) {
-            std::cerr << WSAGetLastError() << " Bind Error" << std::endl;
+            printWSAError();
             closeConnection(s);
             continue;
 
@@ -175,7 +175,7 @@ SOCKET ServerCore::getSocketAndBind(ADDRINFOA* addrinfoStruct) {
 
 void ServerCore::closeConnection(const SOCKET& socket) {
     if (int errmsg = closesocket(socket) != 0) {
-        std::cerr << WSAGetLastError() << " Close socket Error" << std::endl;
+        printWSAError();
         return;
     }
     std::cout << "connection closed!" << std::endl;
@@ -183,7 +183,7 @@ void ServerCore::closeConnection(const SOCKET& socket) {
 
 void ServerCore::listenPort(const SOCKET& socket, const int& maxQueue) {
     if(int errmsg = listen(socket, maxQueue) != 0) {
-        std::cout << "Listen Error : " << WSAGetLastError() << std::endl;
+        printWSAError();
         return;
     }
     std::cout << "Server is listening for connections....." << std::endl;
@@ -202,7 +202,7 @@ bool ServerCore::sendMessage(const char* msg, const SOCKET& socket, const int& f
     while (totalSent < len) {
         result = send(socket, msg + totalSent, len-totalSent, flags);
         if (totalSent == -1) {
-            std::cerr << "Send error : " << WSAGetLastError() << std::endl;
+            printWSAError();
             return false;
         }
         totalSent += result;
@@ -214,7 +214,7 @@ int ServerCore::receiveMessage(char* msg, const int& maxmsglen, const SOCKET& so
     int result = 0;
     result = recv(socket, msg, maxmsglen - 1, flags);
     if (result == -1) {
-        std::cerr << "Recv error : " << WSAGetLastError() << std::endl;
+        printWSAError();
     }
     return result;
 }
@@ -234,7 +234,7 @@ void ServerCore::connectionsListenerDispatcher() {
 
         SOCKET dedicatedSocket = acceptConnection(mainSocket, remote_addr, remoteaddr_size);
         if (dedicatedSocket == -1 && !(stoplistening)) {
-            std::cerr << WSAGetLastError() << " Accept Error" << std::endl;
+            printWSAError();
             continue;
         }
         if (stoplistening) {

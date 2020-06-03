@@ -159,6 +159,7 @@
     <ClInclude Include="ClientInfo.h" />
     <ClInclude Include="Server.h" />
     <ClInclude Include="ServerCore.h" />
+    <ClInclude Include="WSAErrorList.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

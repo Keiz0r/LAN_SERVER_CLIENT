@@ -164,7 +164,7 @@ SOCKET ClientCore::getSocketAndConnect(ADDRINFOA* addrinfoStruct)
 
 bool ClientCore::makeConnection(const SOCKET& socket, ADDRINFOA* addrinfo) {
     if (int errmsg = connect(socket, addrinfo->ai_addr, addrinfo->ai_addrlen) != 0) {
-        std::cerr << WSAGetLastError() << " Connect Error" << std::endl;
+        printWSAError();
         return false;
     }
     std::cout << "connection established!" << std::endl;
@@ -173,7 +173,7 @@ bool ClientCore::makeConnection(const SOCKET& socket, ADDRINFOA* addrinfo) {
 
 void ClientCore::closeConnection(const SOCKET& socket) {
     if (int errmsg = closesocket(socket) != 0) {
-        std::cerr << WSAGetLastError() << " Close socket Error" << std::endl;
+        printWSAError();
         return;
     }
     std::cout << "connection closed!" << std::endl;
@@ -186,7 +186,7 @@ bool ClientCore::sendMessage(const char* msg, const int& flags) {
     while (totalSent < len) {
         result = send(mainSocket, msg + totalSent, len - totalSent, flags);
         if (totalSent == -1) {
-            std::cerr << "Send error : " << WSAGetLastError() << std::endl;
+            printWSAError();
             return false;
         }
         totalSent += result;
@@ -198,7 +198,7 @@ int ClientCore::receiveMessage(char* msg, const int& maxmsglen, const SOCKET& so
     int result = 0;
     result = recv(socket, msg, maxmsglen - 1, flags);
     if (result == -1) {
-        std::cerr << "Recv error : " << WSAGetLastError() << std::endl;
+        printWSAError();
     }
     return result;
 }
