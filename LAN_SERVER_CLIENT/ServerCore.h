@@ -13,24 +13,37 @@
 #define MAX_MESSAGE_SIZE 4096
 #define MAX_NAME_LENGTH 256
 
-class SocketCore {
+class ServerCore {
 public:
-	static ADDRINFOA* makeAddrInfo(PCSTR nodename, PCSTR servicename, const ADDRINFOA& hints);
-	static ADDRINFOA makeHints(const int& family, const int& socktype, const int& protocol, const int& flags);
-	static void displayAddrinfo(ADDRINFOA* addrinfoStruct);
-	static SOCKET getSocketAndBind(ADDRINFOA* addrinfoStruct);
-	static SOCKET getSocketAndConnect(ADDRINFOA* addrinfoStruct);
-	static void makeConnection(const SOCKET& socket, ADDRINFOA* addrinfo);
-	static void closeConnection(const SOCKET& socket);
-	static void listenPort(const SOCKET& socket,const int& maxQueue);
-	static SOCKET acceptConnection(const SOCKET& socket, sockaddr& sockaddrstorage, int& storageSize);
-	static bool sendMessage(const char* msg, const SOCKET& socket, const int& flags);	//returns #bytes sent
-	static int receiveMessage(char* msg, const int& maxmsglen, const SOCKET& socket, const int& flags);	//returns 0 if remote connection closed
-	static void* get_in_addr(sockaddr* sa);	/// get sockaddr, IPv4 or IPv6
-	static void connectionsListenerDispatcher(std::vector<std::shared_ptr<ClientInfo>>* clients, SOCKET* socketin, std::queue<std::string>* messageQue, bool* stop, std::mutex* clientsMutex, std::mutex* msgQueMutex);
-	static void serverListener(std::shared_ptr<ClientInfo> client, std::queue<std::string>* messageQue, std::mutex* msgQueMutex);
-	static void clientListener(SOCKET* socket);
-	static void serverRetranslator(std::vector<std::shared_ptr<ClientInfo>>* clients, std::queue<std::string>* messageQue, bool* stop, std::mutex* clientsMutex, std::mutex* msgQueMutex);
+	ServerCore(const char* IP, const char* port, std::vector<std::shared_ptr<ClientInfo>>& clientinfoVec, std::queue<std::string>& msgQ);
+	~ServerCore();
+	bool sendMessage(const char* msg, const SOCKET& socket, const int& flags);	//returns #bytes sent
+	int receiveMessage(char* msg, const int& maxmsglen, const SOCKET& socket, const int& flags);	//returns 0 if remote connection closed
+	void startDispatcher();
+	void startRetranslator();
+	void stopServer();
+private:
+	ADDRINFOA* makeAddrInfo(PCSTR nodename, PCSTR servicename, const ADDRINFOA& hints);
+	ADDRINFOA makeHints(const int& family, const int& socktype, const int& protocol, const int& flags);
+	void displayAddrinfo(ADDRINFOA* addrinfoStruct);
+	void* get_in_addr(sockaddr* sa);	/// get sockaddr, IPv4 or IPv6
+	SOCKET getSocketAndBind(ADDRINFOA* addrinfoStruct);	//Binds to the first suitable addrinfo. could be listening on the wrong network cuz of it
+	SOCKET acceptConnection(const SOCKET& socket, sockaddr& sockaddrstorage, int& storageSize);
+	void closeConnection(const SOCKET& socket);
+	void listenPort(const SOCKET& socket, const int& maxQueue);
+	void connectionsListenerDispatcher();
+	void serverListener(std::shared_ptr<ClientInfo> client);
+	void serverRetranslator();
+private:
+	WSAData wsaData;
+	SOCKET mainSocket;
+	std::thread listenerThr;
+	std::thread retranslatorThr;
+	bool stoplistening = false;
+	std::mutex clientsMutex;
+	std::mutex msgQueMutex;
+	std::vector<std::shared_ptr<ClientInfo>>& m_pClients;
+	std::queue<std::string>& m_pMessageQueue;
 };
 
 //		//tests for manual insertion

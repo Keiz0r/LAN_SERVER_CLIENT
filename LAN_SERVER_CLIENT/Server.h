@@ -1,7 +1,5 @@
 #pragma once
-#include "SocketCore.h"
-#include "ClientInfo.h"
-#include <mutex>
+#include "ServerCore.h"
 
 class Server {
 public:
@@ -12,13 +10,8 @@ private:
 public:
 	std::string input ="";
 private:
-	WSAData wsaData;
-	const char* IPaddress = NULL;    // or in format "255.255.255.255"
-	const char* Port = "36484";
-	SOCKET mainSocket;
-	bool stoplistening = false;
+	std::string IPaddress{"localhost"};    // or in format "255.255.255.255"
+	std::string Port{"36484"};
 	std::vector<std::shared_ptr<ClientInfo>> clients;	//probably make it a linked list
-	std::mutex clientsMutex;
 	std::queue<std::string> messageQueue;
-	std::mutex msgQueMutex;
 };

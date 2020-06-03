@@ -1,5 +1,5 @@
 #pragma once
-#include "SocketCore.h"
+#include "ClientCore.h"
 
 class Client {
 public:
@@ -10,8 +10,7 @@ private:
 public:
 	std::string input = "";
 private:
-	WSAData wsaData;
-	SOCKET mainSocket;
-	char serverIP[INET6_ADDRSTRLEN];
+	std::string serverIP = "localhost";
+	std::string serverPort = "36484";
 //	std::vector<otherclientID, hisACTION> dataofothers;	// TODO : for any game listener should fill this
 };

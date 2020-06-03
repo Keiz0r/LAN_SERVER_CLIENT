@@ -1,6 +1,35 @@
-#include "SocketCore.h"
+#include "ServerCore.h"
 
-ADDRINFOA* SocketCore::makeAddrInfo(PCSTR nodename, PCSTR servicename, const ADDRINFOA& hints) {
+ServerCore::ServerCore(const char* IP, const char* port, std::vector<std::shared_ptr<ClientInfo>>& clientinfoVec, std::queue<std::string>& msgQ)
+    :
+    mainSocket(INVALID_SOCKET),
+    m_pClients(clientinfoVec),
+    m_pMessageQueue(msgQ)
+{
+    if (WSAStartup(MAKEWORD(2, 0), &wsaData) != 0) {
+        std::cerr << "WSAStartup failed." << std::endl;
+    }
+
+    ADDRINFOA serverHints = makeHints(AF_UNSPEC, SOCK_STREAM, NULL, AI_PASSIVE);
+    ADDRINFOA* serverAddrinfo = makeAddrInfo(IP, port, serverHints);
+    mainSocket = getSocketAndBind(serverAddrinfo);   //  IPv6 server blocked here
+    displayAddrinfo(serverAddrinfo);
+    FreeAddrInfoA(serverAddrinfo);
+
+    listenPort(mainSocket, 10);
+}
+
+ServerCore::~ServerCore() {
+    if (listenerThr.joinable()) {
+        listenerThr.join();
+    }
+    if (retranslatorThr.joinable()) {
+        retranslatorThr.join();
+    }
+    WSACleanup();
+}
+
+ADDRINFOA* ServerCore::makeAddrInfo(PCSTR nodename, PCSTR servicename, const ADDRINFOA& hints) {
     ADDRINFOA* result = NULL;
     //call getaddrinfo
     DWORD dwRetval;
@@ -12,7 +41,7 @@ ADDRINFOA* SocketCore::makeAddrInfo(PCSTR nodename, PCSTR servicename, const ADD
     return result;
 }
 
-ADDRINFOA SocketCore::makeHints(const int& family, const int& socktype, const int& protocol, const int& flags) {
+ADDRINFOA ServerCore::makeHints(const int& family, const int& socktype, const int& protocol, const int& flags) {
     ADDRINFOA hints;
     // Setup the hints address info structure
     // which is passed to the getaddrinfo() function
@@ -24,7 +53,7 @@ ADDRINFOA SocketCore::makeHints(const int& family, const int& socktype, const in
     return hints;
 }
 
-void SocketCore::displayAddrinfo(ADDRINFOA* addrinfoStruct) {
+void ServerCore::displayAddrinfo(ADDRINFOA* addrinfoStruct) {
     SOCKADDR_IN* sockaddr_ipv4;
     SOCKADDR_IN6* sockaddr_ipv6;
     char ip4[INET_ADDRSTRLEN];  // space to hold the IPv4 string
@@ -107,18 +136,19 @@ void SocketCore::displayAddrinfo(ADDRINFOA* addrinfoStruct) {
     }
 }
 
-SOCKET SocketCore::getSocketAndBind(ADDRINFOA* addrinfoStruct) {
+SOCKET ServerCore::getSocketAndBind(ADDRINFOA* addrinfoStruct) {
     ADDRINFOA* p;
     SOCKET s = INVALID_SOCKET;
     // loop through all the results and connect to the first we can
     for (p = addrinfoStruct; p != NULL; p = p->ai_next) {
-        if ((s = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
-            std::cerr << "Socket error :" << WSAGetLastError() << std::endl;
-            continue;
-        }
 
         //  blocking of IPv6 server. Comment out if network supports IPv6
         if (p->ai_family != AF_INET) {
+            continue;
+        }
+
+        if ((s = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+            std::cerr << "Socket error :" << WSAGetLastError() << std::endl;
             continue;
         }
 
@@ -143,41 +173,7 @@ SOCKET SocketCore::getSocketAndBind(ADDRINFOA* addrinfoStruct) {
     return s;
 }
 
-SOCKET SocketCore::getSocketAndConnect(ADDRINFOA* addrinfoStruct)
-{
-    ADDRINFOA* p;
-    SOCKET s = INVALID_SOCKET;
-    // loop through all the results and connect to the first we can
-    for (p = addrinfoStruct; p != NULL; p = p->ai_next) {
-        if ((s = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
-            std::cerr << "Socket error :" << WSAGetLastError() << std::endl;
-            continue;
-        }
-
-        if (connect(s, p->ai_addr, p->ai_addrlen) == -1) {
-            std::cerr << " Connect error : " << WSAGetLastError() << std::endl;
-            closeConnection(s);
-            continue;
-        }
-
-        break;
-    }
-    if (p == NULL) {
-        std::cout << "Failed to connect" << std::endl;
-        return -1;
-    }
-    return s;
-}
-
-void SocketCore::makeConnection(const SOCKET& socket, ADDRINFOA* addrinfo) {
-   if( int errmsg = connect(socket, addrinfo->ai_addr, addrinfo->ai_addrlen) != 0) {
-       std::cerr << WSAGetLastError() << " Connect Error" << std::endl;
-       return;
-   }
-   std::cout << "connection established!" << std::endl;
-}
-
-void SocketCore::closeConnection(const SOCKET& socket) {
+void ServerCore::closeConnection(const SOCKET& socket) {
     if (int errmsg = closesocket(socket) != 0) {
         std::cerr << WSAGetLastError() << " Close socket Error" << std::endl;
         return;
@@ -185,7 +181,7 @@ void SocketCore::closeConnection(const SOCKET& socket) {
     std::cout << "connection closed!" << std::endl;
 }
 
-void SocketCore::listenPort(const SOCKET& socket, const int& maxQueue) {
+void ServerCore::listenPort(const SOCKET& socket, const int& maxQueue) {
     if(int errmsg = listen(socket, maxQueue) != 0) {
         std::cout << "Listen Error : " << WSAGetLastError() << std::endl;
         return;
@@ -193,13 +189,13 @@ void SocketCore::listenPort(const SOCKET& socket, const int& maxQueue) {
     std::cout << "Server is listening for connections....." << std::endl;
 }
 
-SOCKET SocketCore::acceptConnection(const SOCKET& socket, sockaddr& sockaddrstorage, int& storageSize) {
+SOCKET ServerCore::acceptConnection(const SOCKET& socket, sockaddr& sockaddrstorage, int& storageSize) {
     int result = accept(socket, &sockaddrstorage, &storageSize);
     return result;
     //  error checking done outside
 }
 
-bool SocketCore::sendMessage(const char* msg, const SOCKET& socket, const int& flags) {
+bool ServerCore::sendMessage(const char* msg, const SOCKET& socket, const int& flags) {
     int result = 0;
     int len = strlen(msg);
     int totalSent = 0;
@@ -214,7 +210,7 @@ bool SocketCore::sendMessage(const char* msg, const SOCKET& socket, const int& f
     return true;
 }
 
-int SocketCore::receiveMessage(char* msg, const int& maxmsglen, const SOCKET& socket, const int& flags) {
+int ServerCore::receiveMessage(char* msg, const int& maxmsglen, const SOCKET& socket, const int& flags) {
     int result = 0;
     result = recv(socket, msg, maxmsglen - 1, flags);
     if (result == -1) {
@@ -223,7 +219,7 @@ int SocketCore::receiveMessage(char* msg, const int& maxmsglen, const SOCKET& so
     return result;
 }
 
-void* SocketCore::get_in_addr(sockaddr* sa) {
+void* ServerCore::get_in_addr(sockaddr* sa) {
     if (sa->sa_family == AF_INET) {
         return &(reinterpret_cast<sockaddr_in*>(sa)->sin_addr);
     }
@@ -231,17 +227,17 @@ void* SocketCore::get_in_addr(sockaddr* sa) {
     return &(reinterpret_cast<sockaddr_in6*>(sa)->sin6_addr);
 }
 
-void SocketCore::connectionsListenerDispatcher(std::vector<std::shared_ptr<ClientInfo>>* clients, SOCKET* socketin, std::queue<std::string>* messageQue, bool* stop, std::mutex* clientsMutex, std::mutex* msgQueMutex) {
-    while (!(*stop)) {
+void ServerCore::connectionsListenerDispatcher() {
+    while (!stoplistening) {
         sockaddr remote_addr;
         int remoteaddr_size = sizeof(remote_addr);
 
-        SOCKET dedicatedSocket = acceptConnection(*socketin,remote_addr, remoteaddr_size);
-        if (dedicatedSocket == -1 && !(*stop)) {
+        SOCKET dedicatedSocket = acceptConnection(mainSocket, remote_addr, remoteaddr_size);
+        if (dedicatedSocket == -1 && !(stoplistening)) {
             std::cerr << WSAGetLastError() << " Accept Error" << std::endl;
             continue;
         }
-        if (*stop) {
+        if (stoplistening) {
             break;
         }
         char remoteIP[INET6_ADDRSTRLEN];
@@ -249,22 +245,22 @@ void SocketCore::connectionsListenerDispatcher(std::vector<std::shared_ptr<Clien
         char remoteport[20];
         std::shared_ptr<ClientInfo> client = std::make_shared<ClientInfo>();
         getnameinfo(&remote_addr, remoteaddr_size, remotename, MAX_NAME_LENGTH, remoteport, 20, 0);
-        InetNtopA(remote_addr.sa_family, SocketCore::get_in_addr(&remote_addr), remoteIP, INET6_ADDRSTRLEN);
+        InetNtopA(remote_addr.sa_family, get_in_addr(&remote_addr), remoteIP, INET6_ADDRSTRLEN);
         std::cout << "got a conenction from : " << remotename << " IP : " << remoteIP << std::endl;
         client->socket = dedicatedSocket;
         client->IPaddress = remoteIP;
         client->name = remotename;
         client->port = remoteport;
 
-        clientsMutex->lock();
-        clients->push_back(client);
-        clientsMutex->unlock();
-        std::thread newListener(serverListener, client, messageQue, msgQueMutex);
+        clientsMutex.lock();
+        m_pClients.push_back(client);
+        clientsMutex.unlock();
+        std::thread newListener([&](){this->serverListener(client);});
         newListener.detach();
     }
 }
 
-void SocketCore::serverListener(std::shared_ptr<ClientInfo> client, std::queue<std::string>* messageQue, std::mutex* msgQueMutex) {
+void ServerCore::serverListener(std::shared_ptr<ClientInfo> client) {
     client->threadID = std::this_thread::get_id();
     client->connected = true;
     int numbytes = 0;
@@ -274,13 +270,13 @@ void SocketCore::serverListener(std::shared_ptr<ClientInfo> client, std::queue<s
         if (numbytes > 0) {
             //  insert null-terminator
             receivedmessage[numbytes] = '\0';
-            std::cout << client->name << " : " << receivedmessage << std::endl;
+            std::cout << client->name << " :\n" << receivedmessage << "\n" << std::endl;
             //  fill FIFO with name(max 256 chars) and message
             auto tempNameStr = client->name;
             tempNameStr.resize(MAX_NAME_LENGTH);
-            msgQueMutex->lock();
-            messageQue->push(tempNameStr + std::string{ receivedmessage });
-            msgQueMutex->unlock();
+            msgQueMutex.lock();
+            m_pMessageQueue.push(tempNameStr + std::string{ receivedmessage });
+            msgQueMutex.unlock();
         //    //  clear clientbuffer
         //    receivedmessage[0] = '\0';
         }
@@ -293,52 +289,62 @@ void SocketCore::serverListener(std::shared_ptr<ClientInfo> client, std::queue<s
     }
 }
 
-void SocketCore::clientListener(SOCKET* socket) {
-    const int buffersize = 4096;
-    char receivebuffer[buffersize];
-    int numbytes = 0;
-    while (true) {
-        numbytes = receiveMessage(receivebuffer, buffersize, *socket, 0);
-        if (numbytes > 0) {
-            receivebuffer[numbytes] = '\0';
-            std::cout << receivebuffer << std::endl;
-        }
-        if (numbytes == SOCKET_ERROR) {
-            std::cout << "Server disconnected" << std::endl;
-            return;
-        }
-    }
-}
-
-void SocketCore::serverRetranslator(std::vector<std::shared_ptr<ClientInfo>>* clients, std::queue<std::string>* messageQue, bool* stop, std::mutex* clientsMutex, std::mutex* msgQueMutex) {
-    while (!(*stop)) {
-        if (!messageQue->empty()) {
-            std::string sender = messageQue->front().substr(0, 256);
+void ServerCore::serverRetranslator() {
+    while (!stoplistening) {
+        if (!m_pMessageQueue.empty()) {
+            std::string sender = m_pMessageQueue.front().substr(0, 256);
             //  clear null terminators
             sender.erase(std::find(sender.begin(), sender.end(), '\0'), sender.end());
-            std::string msg = messageQue->front().substr(256);
+            std::string msg = m_pMessageQueue.front().substr(256);
 
-            std::vector<std::shared_ptr<ClientInfo>>::iterator endloop = clients->end();
-            for (std::vector<std::shared_ptr<ClientInfo>>::iterator i = clients->begin(); i != endloop;) {
+            std::vector<std::shared_ptr<ClientInfo>>::iterator endloop = m_pClients.end();
+            for (std::vector<std::shared_ptr<ClientInfo>>::iterator i = m_pClients.begin(); i != endloop;) {
                 if ((*i)->connected) {
-                    sendMessage((sender + " : " + msg).c_str(), (*i)->socket, 0);
+                    sendMessage((sender + " : \n" + msg).c_str(), (*i)->socket, 0);
                     i++;
                 }
                 else {  
                     // cleanup of dead ClientInfo
-                    clientsMutex->lock();
-                    i = clients->erase(i);
-                    endloop = clients->end();
-                    clientsMutex->unlock();
+                    clientsMutex.lock();
+                    i = m_pClients.erase(i);
+                    endloop = m_pClients.end();
+                    clientsMutex.unlock();
                 }
             }
-            msgQueMutex->lock();
-            messageQue->pop();
-            msgQueMutex->unlock();
+            msgQueMutex.lock();
+            m_pMessageQueue.pop();
+            msgQueMutex.unlock();
         }
         else {
             // for some reason FIFO is empty. wait and don't waste CPU cycles
             std::this_thread::sleep_for(std::chrono::milliseconds(50));
         }
+    }
+}
+
+void ServerCore::startDispatcher() {
+    // thread fills the ClientInfo form and dispatches conenctions to separate threads
+    listenerThr = std::thread([this]() {this->connectionsListenerDispatcher();});
+}
+
+void ServerCore::startRetranslator() {
+    //  if FIFO is empty, retranslator polling at 1/50ms rate
+    retranslatorThr = std::thread([this]() {this->serverRetranslator();});
+}
+
+void ServerCore::stopServer() {
+    stoplistening = true;
+    closeConnection(mainSocket);
+    {
+        //make a server shutdown procedure, wit several announcements like wow ingame
+        m_pMessageQueue.push("You were disconnected from the server. Server shutdown");
+        //then add mutex for that. also make socketcore an entity, and pass all shit by reference, so threads need not arguments
+        // kill all clients on exit
+        std::vector<std::shared_ptr<ClientInfo>>::iterator loopend = m_pClients.end();
+        clientsMutex.lock();
+        for (std::vector<std::shared_ptr<ClientInfo>>::iterator i = m_pClients.begin(); i != loopend; i++) {
+            (*i)->connected = false;
+        }
+        clientsMutex.unlock();
     }
 }
