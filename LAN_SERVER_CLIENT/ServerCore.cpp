@@ -328,18 +328,34 @@ void ServerCore::serverRetranslator() {
 }
 
 void ServerCore::stopServer() {
+    msgQueMutex.lock();
+    m_pMessageQueue.push("SERVER MESSAGE : Server shutdown in 1:00");
+    msgQueMutex.unlock();
+    std::this_thread::sleep_for(std::chrono::seconds(30));
+    msgQueMutex.lock();
+    m_pMessageQueue.push("SERVER MESSAGE : Server shutdown in 0:30");
+    msgQueMutex.unlock();
+    std::this_thread::sleep_for(std::chrono::seconds(10));
+    msgQueMutex.lock();
+    m_pMessageQueue.push("SERVER MESSAGE : Server shutdown in 0:10");
+    msgQueMutex.unlock();
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+    msgQueMutex.lock();
+    m_pMessageQueue.push("SERVER MESSAGE : Server shutdown in 0:05");
+    msgQueMutex.unlock();
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    msgQueMutex.lock();
+    m_pMessageQueue.push("SERVER MESSAGE : Server shutdown in 0:01");
+    msgQueMutex.unlock();
+
     stoplistening = true;
     closeConnection(mainSocket);
-    {
-        //make a server shutdown procedure, wit several announcements like wow ingame
-        m_pMessageQueue.push("You were disconnected from the server. Server shutdown");
-        //then add mutex for that. also make socketcore an entity, and pass all shit by reference, so threads need not arguments
-        // kill all clients on exit
-        std::vector<std::shared_ptr<ClientInfo>>::iterator loopend = m_pClients.end();
-        clientsMutex.lock();
-        for (std::vector<std::shared_ptr<ClientInfo>>::iterator i = m_pClients.begin(); i != loopend; i++) {
-            (*i)->connected = false;
-        }
-        clientsMutex.unlock();
+
+    // kill all clients on exit
+    std::vector<std::shared_ptr<ClientInfo>>::iterator loopend = m_pClients.end();
+    clientsMutex.lock();
+    for (std::vector<std::shared_ptr<ClientInfo>>::iterator i = m_pClients.begin(); i != loopend; i++) {
+        (*i)->connected = false;
     }
+    clientsMutex.unlock();
 }
