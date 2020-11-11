@@ -187,11 +187,11 @@ bool ClientCore::sendMessage(const char* msg, const int& flags) {
     int totalSent = 0;
     while (totalSent < len) {
         result = send(mainSocket, msg + totalSent, len - totalSent, flags);
+        totalSent += result;
         if (totalSent == -1) {
             printWSAError();
             return false;
         }
-        totalSent += result;
     }
     return true;
 }

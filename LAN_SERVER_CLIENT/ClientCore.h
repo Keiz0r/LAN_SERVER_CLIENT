@@ -9,8 +9,13 @@
 #include <queue>
 #include <mutex>
 #include <memory>
+//#include "openssl/ssl.h"
+//#include "openssl/err.h"
 
 #pragma comment (lib, "ws2_32")
+//#pragma comment (lib, "crypt32")
+//#pragma comment (lib, "static/libssl64MT")
+//#pragma comment (lib, "static/libcrypto64MT")
 
 #define MAX_MESSAGE_SIZE 4096
 #define MAX_NAME_LENGTH 256

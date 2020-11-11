@@ -13,10 +13,12 @@ void Server::Run() {
     // server input loop
     while (1) {
         std::cout << ">> ";
-        std::getline(std::cin >> std::ws, input);
+        std::cin >> input;
+//        std::getline(std::cin >> std::ws, input);
         if (input == "STOPSERVER") {
             std::cout << "Are you sure you want to stop server? (y/n)";
-            std::getline(std::cin >> std::ws, input);
+            std::cin >> input;
+//            std::getline(std::cin >> std::ws, input);
             if (input == "y") {
                 srv.stopServer();
                 break;

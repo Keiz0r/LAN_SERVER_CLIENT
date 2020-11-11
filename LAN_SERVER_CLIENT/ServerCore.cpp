@@ -328,25 +328,33 @@ void ServerCore::serverRetranslator() {
 }
 
 void ServerCore::stopServer() {
+    static std::string sm = "SERVER MESSAGE";
+    sm.resize(MAX_NAME_LENGTH);
     msgQueMutex.lock();
-    m_pMessageQueue.push("SERVER MESSAGE : Server shutdown in 1:00");
+    m_pMessageQueue.push(sm + "Server shutdown in 1:00");
+    std::cout << "shutdown in 1:00\n";
     msgQueMutex.unlock();
     std::this_thread::sleep_for(std::chrono::seconds(30));
     msgQueMutex.lock();
-    m_pMessageQueue.push("SERVER MESSAGE : Server shutdown in 0:30");
+    m_pMessageQueue.push(sm + "Server shutdown in 0:30");
+    std::cout << "shutdown in 0:30\n";
     msgQueMutex.unlock();
-    std::this_thread::sleep_for(std::chrono::seconds(10));
+    std::this_thread::sleep_for(std::chrono::seconds(20));
     msgQueMutex.lock();
-    m_pMessageQueue.push("SERVER MESSAGE : Server shutdown in 0:10");
+    m_pMessageQueue.push(sm + "Server shutdown in 0:10");
+    std::cout << "shutdown in 0:10\n";
     msgQueMutex.unlock();
     std::this_thread::sleep_for(std::chrono::seconds(5));
     msgQueMutex.lock();
-    m_pMessageQueue.push("SERVER MESSAGE : Server shutdown in 0:05");
+    m_pMessageQueue.push(sm + "Server shutdown in 0:05");
+    std::cout << "shutdown in 0:05\n";
+    msgQueMutex.unlock();
+    std::this_thread::sleep_for(std::chrono::seconds(4));
+    msgQueMutex.lock();
+    m_pMessageQueue.push(sm + "Server shutdown in 0:01");
+    std::cout << "shutdown in 0:01\n";
     msgQueMutex.unlock();
     std::this_thread::sleep_for(std::chrono::seconds(1));
-    msgQueMutex.lock();
-    m_pMessageQueue.push("SERVER MESSAGE : Server shutdown in 0:01");
-    msgQueMutex.unlock();
 
     stoplistening = true;
     closeConnection(mainSocket);

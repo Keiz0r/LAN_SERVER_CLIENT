@@ -7,8 +7,8 @@
 int main() {
 
     std::string input;
-    std::cout << "client/server?\n>> ";
-    std::getline(std::cin, input);
+    std::cout << "client/server?\t>> ";
+    std::cin >> input;
     if (input == "client") {
         Client client;
     }
