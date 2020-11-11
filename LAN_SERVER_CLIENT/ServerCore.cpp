@@ -2,7 +2,6 @@
 
 ServerCore::ServerCore(const char* IP, const char* port, std::vector<std::shared_ptr<ClientInfo>>& clientinfoVec, std::queue<std::string>& msgQ)
     :
-    mainSocket(INVALID_SOCKET),
     m_pClients(clientinfoVec),
     m_pMessageQueue(msgQ)
 {
@@ -37,8 +36,8 @@ ServerCore::~ServerCore() {
 ADDRINFOA* ServerCore::makeAddrInfo(PCSTR nodename, PCSTR servicename, const ADDRINFOA& hints) {
     ADDRINFOA* result = NULL;
     //call getaddrinfo
-    DWORD dwRetval;
-    if (dwRetval = GetAddrInfoA(nodename, servicename, &hints, &result) != 0) {
+    DWORD dwRetval = GetAddrInfoA(nodename, servicename, &hints, &result);
+    if (dwRetval != 0) {
         std::cerr << "getaddrinfo failed with error: " << dwRetval << std::endl;
         return NULL;
     }
@@ -151,12 +150,12 @@ SOCKET ServerCore::getSocketAndBind(ADDRINFOA* addrinfoStruct) {
         if (p->ai_family != AF_INET) {
             continue;
         }
-
+        //ask system for socket (of such type)
         if ((s = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
             printWSAError();
             continue;
         }
-
+        //bind given socket to an address (==initialize socket)
         if (bind(s, p->ai_addr, p->ai_addrlen) != 0) {
             printWSAError();
             closeConnection(s);
@@ -328,7 +327,7 @@ void ServerCore::serverRetranslator() {
 }
 
 void ServerCore::stopServer() {
-    static std::string sm = "SERVER MESSAGE";
+    std::string sm = "SERVER MESSAGE";
     sm.resize(MAX_NAME_LENGTH);
     msgQueMutex.lock();
     m_pMessageQueue.push(sm + "Server shutdown in 1:00");

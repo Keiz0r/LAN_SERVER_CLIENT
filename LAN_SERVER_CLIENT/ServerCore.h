@@ -36,7 +36,7 @@ private:
 	void serverRetranslator();
 private:
 	WSAData wsaData;
-	SOCKET mainSocket;
+	SOCKET mainSocket = INVALID_SOCKET;
 	std::thread listenerThr;
 	std::thread retranslatorThr;
 	bool stoplistening = false;
