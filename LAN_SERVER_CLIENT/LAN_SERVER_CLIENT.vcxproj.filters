@@ -41,13 +41,13 @@
     <ClInclude Include="Server.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ClientCore.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="ServerCore.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="WSAErrorList.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ClientCore.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

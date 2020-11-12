@@ -22,6 +22,9 @@ static void printWSAError() {
         case WSAEADDRINUSE:
             OUTPUTWSAERRSTRING("Error: <Socket already in use>");
             break;
+        case WSAECONNRESET:
+            OUTPUTWSAERRSTRING("Error: <Lost connection to Remote client>");
+            break;
         default:
             std::cerr << "ERROR # " << error << std::endl;
     }

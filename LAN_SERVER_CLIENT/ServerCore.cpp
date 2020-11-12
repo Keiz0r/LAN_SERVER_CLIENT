@@ -62,6 +62,7 @@ void ServerCore::displayAddrinfo(ADDRINFOA* addrinfoStruct) {
     SOCKADDR_IN6* sockaddr_ipv6;
     char ip4[INET_ADDRSTRLEN];  // space to hold the IPv4 string
     char ip6[INET6_ADDRSTRLEN]; // space to hold the IPv6 string
+    uint16_t port;   //space to hold port string
 //    inet_ntop(AF_INET6, &(sa6.sin6_addr), ip6, INET6_ADDRSTRLEN);
 
     // Retrieve each address and print out the hex bytes
@@ -78,7 +79,8 @@ void ServerCore::displayAddrinfo(ADDRINFOA* addrinfoStruct) {
             std::cout << "AF_INET (IPv4)" << std::endl;
             sockaddr_ipv4 = reinterpret_cast<sockaddr_in*>(ptr->ai_addr);
             InetNtopA(AF_INET, &sockaddr_ipv4->sin_addr, ip4, INET_ADDRSTRLEN);
-            std::cout << "\tIPv4 address " << ip4 << std::endl;
+            port = ntohs(*(&sockaddr_ipv4->sin_port));
+            std::cout << "\tIPv4 address " << ip4 <<" : " << port << std::endl;
             break;
         case AF_INET6:
             std::cout << "AF_INET6 (IPv6)" << std::endl;
@@ -178,15 +180,15 @@ SOCKET ServerCore::getSocketAndBind(ADDRINFOA* addrinfoStruct) {
 }
 
 void ServerCore::closeConnection(const SOCKET& socket) {
-    if (int errmsg = closesocket(socket) != 0) {
+    if (closesocket(socket) != 0) {
         printWSAError();
         return;
     }
-    std::cout << "connection closed!" << std::endl;
+    std::cout << "Socket closed!" << std::endl;
 }
 
 void ServerCore::listenPort(const SOCKET& socket, const int& maxQueue) {
-    if(int errmsg = listen(socket, maxQueue) != 0) {
+    if(listen(socket, maxQueue) != 0) {
         printWSAError();
         return;
     }
@@ -194,6 +196,7 @@ void ServerCore::listenPort(const SOCKET& socket, const int& maxQueue) {
 }
 
 SOCKET ServerCore::acceptConnection(const SOCKET& socket, sockaddr& sockaddrstorage, int& storageSize) {
+    //accept is blocking until NetworkEvent
     int result = accept(socket, &sockaddrstorage, &storageSize);
     return result;
     //  error checking done outside
